@@ -1,0 +1,53 @@
+# Core Framework
+fastapi
+uvicorn
+
+# Database
+sqlalchemy
+timescaledb
+asyncpg # For async PostgreSQL
+psycopg2
+greenlet
+
+# Security
+pydantic>=2.11.7
+pydantic_settings
+python-jose[cryptography]
+passlib[bcrypt]
+python-multipart
+python-dotenv
+
+# Search and Analytics
+opensearch-py
+
+# WebSocket
+websockets
+
+# Testing
+pytest
+pytest-asyncio
+pytest-cov
+pytest-mock
+pytest-benchmark
+httpx
+respx
+factory-boy
+faker
+pytest-factoryboy
+
+# AWS
+boto3
+botocore
+
+# Logging
+structlog
+
+# Background Tasks
+aiojobs
+
+# Monitoring
+prometheus-client
+
+# Utilities
+python-dateutil
+pytz
