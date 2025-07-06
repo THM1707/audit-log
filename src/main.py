@@ -7,7 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.api.endpoints import logs
+from src.api.endpoints import logs, tenants
 from src.core.config import get_settings
 from src.database.pool import db_manager, get_db
 from src.models import AuditLog
@@ -80,7 +80,7 @@ api_router = APIRouter(prefix="/api")
 api_router.include_router(logs.router, tags=["Logs"])
 # api_router.include_router(search.router, tags=["Search"])
 # api_router.include_router(stream.router, tags=["Stream"])
-# api_router.include_router(tenants.router, tags=["Tenants"])
+api_router.include_router(tenants.router, tags=["Tenants"])
 # api_router.include_router(export.router, tags=["Export"])
 
 # Include API router in the main app

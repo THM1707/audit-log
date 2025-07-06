@@ -1,13 +1,19 @@
 """Schemas package."""
 
-from .audit_log import AuditLogBase, AuditLogCreate, AuditLog, AuditLogFilter
+from .audit_log import AuditLog, AuditLogCreate, AuditLogFilter
+from .enums import LogSeverity, LogAction
 from .user import User, UserRole
+from .tenant import Tenant, TenantCreate, TenantUpdate
 
 __all__ = [
-    "AuditLogBase",
-    "AuditLogCreate",
-    "AuditLog",
-    "AuditLogFilter",
-    "User",
-    "UserRole"
+    'AuditLog',
+    'AuditLogCreate',
+    'AuditLogFilter',
+    'LogSeverity',
+    'LogAction',
+    'User',
+    'UserRole',
+    'Tenant',
+    'TenantCreate',
+    'TenantUpdate'
 ]

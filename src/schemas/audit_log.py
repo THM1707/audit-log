@@ -38,7 +38,7 @@ class AuditLog(AuditLogBase):
 
     @classmethod
     def from_model(cls, model):
-        """Convert SQLAlchemy model to Pydantic model."""
+        """Convert SQLAlchemy model to a Pydantic model."""
         return cls.model_validate(model)
 
 
@@ -56,5 +56,5 @@ class AuditLogFilter(BaseModel):
 
     @classmethod
     def from_model(cls, model):
-        """Convert SQLAlchemy model to Pydantic model."""
+        """Convert SQLAlchemy model to a Pydantic model."""
         return cls.model_validate(model)
