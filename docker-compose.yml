@@ -1,0 +1,72 @@
+networks:
+  audit-log-network:
+    driver: bridge
+
+services:
+  app:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://postgres:postgres@db:5432/audit_log
+      - SECRET_KEY=your-secret-key-here
+      - ACCESS_TOKEN_EXPIRE_MINUTES=30
+      - OPENSEARCH_URL=http://opensearch:9200
+      - DEBUG=True
+      - LOG_LEVEL=INFO
+      - CORS_ORIGINS=['*']
+      - SQS_QUEUE_URL=http://sqs:9324/queue/audit-log-queue
+    depends_on:
+      - db
+      # - opensearch
+      # - sqs
+    volumes:
+      - .:/app
+    networks:
+      - audit-log-network
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+
+  db:
+    image: timescale/timescaledb-ha:pg17
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=audit_log
+      - POSTGRES_INITDB_ARGS="--data-checksums"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - audit-log-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # opensearch:
+  #   image: opensearchproject/opensearch:2.11.0
+  #   ports:
+  #     - "9200:9200"
+  #     - "9600:9600"
+  #   environment:
+  #     - discovery.type=single-node
+  #   volumes:
+  #     - opensearch_data:/usr/share/opensearch/data
+  #   networks:
+  #     - audit-log-network
+
+  # sqs:
+  #   image: softwaremill/elasticmq-native:0.14.17
+  #   ports:
+  #     - "9324:9324"
+  #   environment:
+  #     - AWS_ACCESS_KEY_ID=local
+  #     - AWS_SECRET_ACCESS_KEY=local
+  #   networks:
+  #     - audit-log-network
+
+volumes:
+  postgres_data:
+  opensearch_data:

@@ -8,6 +8,7 @@ timescaledb
 asyncpg # For async PostgreSQL
 psycopg2
 greenlet
+asyncio
 
 # Security
 pydantic>=2.11.7

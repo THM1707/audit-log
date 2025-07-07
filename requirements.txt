@@ -12,6 +12,8 @@ anyio==4.9.0
     # via
     #   httpx
     #   starlette
+asyncio==3.4.3
+    # via -r requirements.in
 asyncpg==0.30.0
     # via -r requirements.in
 bcrypt==4.3.0

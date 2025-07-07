@@ -1,13 +1,14 @@
 """Database connection pool management."""
 
+import asyncio
 import logging
 
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncEngine
 from sqlalchemy.orm import sessionmaker
-from src.models import Base, Tenant
 
 from src.database.timescale_init import init_timescale
+from src.models import Base, Tenant
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -18,21 +19,36 @@ class AsyncDatabaseManager:
         self.engine: AsyncEngine | None = None
         self.session_factory: sessionmaker | None = None
 
-    async def init_connection(self, db_url: str):
-        """Initialize database engine and session factory"""
-        self.engine = create_async_engine(
-            db_url,
-            pool_size=8,
-            max_overflow=50,
-            pool_pre_ping=True,
-            pool_recycle=3600,
-            pool_timeout=30,
-            echo=False,
-            future=True
-        )
-        self.session_factory = async_sessionmaker(self.engine, expire_on_commit=False)
-        logger.info("Database engine initialized successfully")
-        logger.info(f"Pool size: {self.engine.pool.size()}")
+    async def init_connection(self, database_url: str, max_retries: int = 5, retry_delay: int = 2) -> None:
+        """Initialize database connection pool with retry logic."""
+        current_retry = 0
+
+        while current_retry < max_retries:
+            try:
+                self.engine = create_async_engine(
+                    database_url,
+                    echo=False,
+                    pool_size=5,
+                    max_overflow=10,
+                    pool_timeout=30,
+                    pool_recycle=3600,
+                    pool_pre_ping=True
+                )
+                self.session_factory = async_sessionmaker(
+                    self.engine,
+                    expire_on_commit=False
+                )
+                logger.info("Database connection pool initialized")
+                return
+            except Exception as e:
+                logger.warning(f"Attempt {current_retry + 1}/{max_retries} failed: {e}")
+                if current_retry < max_retries - 1:
+                    logger.info(f"Retrying in {retry_delay} seconds...")
+                    await asyncio.sleep(retry_delay)
+                current_retry += 1
+
+        logger.error(f"Failed to initialize database connection after {max_retries} attempts")
+        raise ConnectionError("Failed to connect to database after multiple attempts")
 
     async def init_db(self):
         # Drop tables if exists
