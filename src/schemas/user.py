@@ -8,11 +8,11 @@ class UserRole(str, Enum):
 
 class User(BaseModel):
     """Schema representing a user authenticated via API Gateway."""
-    
+
     id: str
     name: str
     role: UserRole
-    tenant_id: str
+    tenant_id: int
 
     class Config:
         from_attributes = True

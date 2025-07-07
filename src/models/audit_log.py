@@ -1,6 +1,7 @@
-from sqlalchemy import Column, String, JSON, Integer
+from sqlalchemy import Column, String, JSON, Integer, ForeignKey
 from sqlalchemy.sql.sqltypes import DateTime
 from sqlalchemy.types import Enum
+from sqlalchemy.orm import relationship
 
 from .base import Base, TimestampMixin
 from datetime import datetime, timezone
@@ -15,9 +16,13 @@ class AuditLog(Base, TimestampMixin):
     # Composite primary key for TimescaleDB partitioning
     id = Column(Integer, primary_key=True, autoincrement=True)
     created_at = Column(DateTime(timezone=True), primary_key=True, default=lambda: datetime.now(timezone.utc), nullable=False)
-    tenant_id = Column(Integer, primary_key=True, nullable=False)
+    tenant_id = Column(Integer, ForeignKey('tenants.id', ondelete='CASCADE'), primary_key=True, nullable=False)
+
+    # Two-way relationship to Tenant
+    tenant = relationship("Tenant", backref="audit_logs")
+
     user_id = Column(String, nullable=False, index=True)
-    session_id = Column(String, nullable=False)
+    session_data = Column(JSON, nullable=False)
     action = Column(Enum(LogAction), nullable=False)
     resource_type = Column(String, nullable=False)
     resource_id = Column(String, nullable=False)

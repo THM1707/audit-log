@@ -118,9 +118,9 @@ class AsyncDatabaseManager:
         """Populate dummy tenants"""
         async with self.session_factory() as session:
             session.add_all([
-                Tenant(id=1, name="Tenant 1", description="Dummy Tenant 1"),
-                Tenant(id=2, name="Tenant 2", description="Dummy Tenant 2"),
-                Tenant(id=3, name="Tenant 3", description="Dummy Tenant 3"),
+                Tenant(name="Tenant 1", description="Dummy Tenant 1"),
+                Tenant(name="Tenant 2", description="Dummy Tenant 2"),
+                Tenant(name="Tenant 3", description="Dummy Tenant 3"),
             ])
             await session.commit()
 

@@ -8,9 +8,6 @@ from .enums import LogSeverity, LogAction
 
 class AuditLogBase(BaseModel):
     """Base audit log schema."""
-    tenant_id: int
-    user_id: str
-    session_id: str
     action: LogAction
     resource_type: str
     resource_id: str
@@ -31,6 +28,7 @@ class AuditLogCreate(AuditLogBase):
 class AuditLog(AuditLogBase):
     """Schema for audit logs."""
     id: int
+    tenant_id: int
     created_at: datetime
     updated_at: datetime
 
@@ -45,7 +43,6 @@ class AuditLog(AuditLogBase):
 class AuditLogFilter(BaseModel):
     """Schema for filtering audit logs."""
     user_id: Optional[str] = None
-    tenant_id: Optional[int] = None
     resource_type: Optional[str] = None
     action: Optional[LogAction] = None
     severity: Optional[LogSeverity] = None

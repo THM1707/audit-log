@@ -1,5 +1,12 @@
 import logging
+import sys
 from contextlib import asynccontextmanager
+from pathlib import Path
+
+# Add the project root to the Python path
+project_root = str(Path(__file__).parent)
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
 
 import uvicorn
 from fastapi import FastAPI, HTTPException, Depends, APIRouter
@@ -10,10 +17,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.api.endpoints import logs, tenants
 from src.core.config import get_settings
 from src.database.pool import db_manager, get_db
+from src.middleware.dev_auth import mock_api_gateway_header
 from src.models import AuditLog
 
-settings = get_settings()
 logger = logging.getLogger(__name__)
+settings = get_settings()
 
 
 @asynccontextmanager
@@ -62,7 +70,7 @@ app = FastAPI(
 )
 
 # # Add development middleware
-# app.add_middleware(DevAuthMiddleware)
+app.middleware("http")(mock_api_gateway_header)
 
 # CORS configuration
 app.add_middleware(

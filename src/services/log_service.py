@@ -1,14 +1,11 @@
 from datetime import datetime
-from typing import List, Optional
+from typing import Sequence, Optional
 
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.core import config
 from src.models import AuditLog
-from src.schemas.enums import LogSeverity, LogAction
-
-settings = config.get_settings()
+from src.schemas import AuditLogCreate, LogAction, LogSeverity
 
 
 class LogService:
@@ -16,7 +13,7 @@ class LogService:
         self.db = db
 
     async def create_log(self, log_data: dict) -> AuditLog:
-        """Create a new audit log entry."""
+        """Create a new audit log."""
         log = AuditLog(**log_data)
         self.db.add(log)
         await self.db.commit()
@@ -34,7 +31,7 @@ class LogService:
         end_date: Optional[datetime] = None,
         page: int = 1,
         limit: int = 100
-    ) -> List[AuditLog]:
+    ) -> Sequence[AuditLog]:
         """Get audit logs with filtering options.
 
         Args:
@@ -51,7 +48,13 @@ class LogService:
         Returns:
             List of audit logs matching the filters
         """
+
+        # using partitioning keys first
         stmt = select(AuditLog).where(AuditLog.tenant_id == tenant_id)
+        if start_date:
+            stmt = stmt.where(AuditLog.created_at >= start_date)
+        if end_date:
+            stmt = stmt.where(AuditLog.created_at <= end_date)
 
         if user_id:
             stmt = stmt.where(AuditLog.user_id == user_id)
@@ -61,18 +64,13 @@ class LogService:
             stmt = stmt.where(AuditLog.action == action)
         if severity:
             stmt = stmt.where(AuditLog.severity == severity)
-        if start_date:
-            stmt = stmt.where(AuditLog.created_at >= start_date)
-        if end_date:
-            stmt = stmt.where(AuditLog.created_at <= end_date)
-
         offset = (page - 1) * limit
         stmt = stmt.offset(offset).limit(limit)
 
         result = await self.db.execute(stmt)
         return result.scalars().all()
 
-    async def get_log_by_id(self, log_id: int) -> Optional[AuditLog]:
+    async def get_log_by_id(self, log_id: int, tenant_id: int) -> Optional[AuditLog]:
         """Get a specific audit log entry by ID and tenant.
 
         Args:
@@ -82,9 +80,11 @@ class LogService:
         Returns:
             The audit log entry if found, None otherwise
         """
+
+        # since timescale DB using tenant id as a dimension, we also use tenant_id to make use of partitioning
         stmt = select(AuditLog).where(
             AuditLog.id == log_id,
-            # AuditLog.tenant_id == tenant_id
+            AuditLog.tenant_id == tenant_id
         )
 
         result = await self.db.execute(stmt)
