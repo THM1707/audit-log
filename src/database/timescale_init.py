@@ -19,23 +19,11 @@ async def create_hypertable(conn: AsyncConnection):
                 'audit_logs',
                 'created_at',
                 chunk_time_interval => INTERVAL '1 month',
-                if_not_exists => TRUE
+                partitioning_column => 'tenant_id', 
+                number_partitions => 4
             );
         """)
     )
-
-    # Add tenant_id as dimension
-    await conn.execute(
-        text("""
-            SELECT add_dimension(
-                'audit_logs',
-                'tenant_id',
-                number_partitions => 4,
-                if_not_exists => TRUE
-            );
-        """)
-    )
-
 
 async def add_policies(conn: AsyncConnection):
     # Set compression settings
