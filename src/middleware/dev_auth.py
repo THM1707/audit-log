@@ -1,7 +1,7 @@
 from fastapi import Request, Response
 from starlette.datastructures import MutableHeaders
 from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.types import ASGIApp, Scope, Receive, Send
+from starlette.types import ASGIApp, Receive, Scope, Send
 
 from src.core.config import get_settings
 from src.schemas import UserRole
@@ -19,17 +19,14 @@ async def mock_api_gateway_header(request: Request, call_next) -> Response:
             "X-User-Id": "1",
             "X-User-Role": UserRole.ADMIN.value,  # Convert enum to string
             "X-User-Name": "Mock Admin",
-            "X-Tenant-Id": "1"
+            "X-Tenant-Id": "1",
         }
 
         # Update headers with mock data
         headers.update(mock_user)
 
         # Create a new request with updated headers
-        request.scope["headers"] = [
-            (k.lower().encode(), v.encode())
-            for k, v in headers.items()
-        ]
+        request.scope["headers"] = [(k.lower().encode(), v.encode()) for k, v in headers.items()]
 
     response = await call_next(request)
     return response
@@ -45,7 +42,7 @@ class MockAPIGatewayASGIMiddleware:
                 (b"x-user-id", b"1"),
                 (b"x-user-role", UserRole.ADMIN.value.encode()),
                 (b"x-user-name", b"Mock Admin"),
-                (b"x-tenant-id", b"1")
+                (b"x-tenant-id", b"1"),
             ]
 
             # Add mock headers to existing headers

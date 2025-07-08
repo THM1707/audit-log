@@ -1,0 +1,11 @@
+[tool.flake8]
+extend-ignore = ["E203", "W503"]
+max-line-length = 120
+
+[tool.isort]
+profile = "black"
+line_length = 120
+known_local_folder = ["src"]
+
+[tool.black]
+line_length = 120

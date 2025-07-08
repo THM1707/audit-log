@@ -52,3 +52,6 @@ prometheus-client
 # Utilities
 python-dateutil
 pytz
+isort
+black
+flake8

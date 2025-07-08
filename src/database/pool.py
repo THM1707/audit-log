@@ -4,7 +4,7 @@ import asyncio
 import logging
 
 from sqlalchemy import text
-from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncEngine
+from sqlalchemy.ext.asyncio import AsyncEngine, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import sessionmaker
 
 from src.database.timescale_init import init_timescale
@@ -32,12 +32,9 @@ class AsyncDatabaseManager:
                     max_overflow=10,
                     pool_timeout=30,
                     pool_recycle=3600,
-                    pool_pre_ping=True
+                    pool_pre_ping=True,
                 )
-                self.session_factory = async_sessionmaker(
-                    self.engine,
-                    expire_on_commit=False
-                )
+                self.session_factory = async_sessionmaker(self.engine, expire_on_commit=False)
                 logger.info("Database connection pool initialized")
                 return
             except Exception as e:
@@ -133,11 +130,13 @@ class AsyncDatabaseManager:
     async def populate_dummy_tenants(self):
         """Populate dummy tenants"""
         async with self.session_factory() as session:
-            session.add_all([
-                Tenant(name="Tenant 1", description="Dummy Tenant 1"),
-                Tenant(name="Tenant 2", description="Dummy Tenant 2"),
-                Tenant(name="Tenant 3", description="Dummy Tenant 3"),
-            ])
+            session.add_all(
+                [
+                    Tenant(name="Tenant 1", description="Dummy Tenant 1"),
+                    Tenant(name="Tenant 2", description="Dummy Tenant 2"),
+                    Tenant(name="Tenant 3", description="Dummy Tenant 3"),
+                ]
+            )
             await session.commit()
 
 

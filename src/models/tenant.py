@@ -1,6 +1,7 @@
 """Tenant model definition."""
-from typing import Dict, Any, Optional
-from sqlalchemy import Text, Index
+from typing import Any, Dict, Optional
+
+from sqlalchemy import Index, Text
 from sqlalchemy.dialects.mysql import VARCHAR
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -10,10 +11,9 @@ from .base import Base, TimestampMixin
 
 class Tenant(Base, TimestampMixin):
     """Tenant model for multi-tenancy."""
+
     __tablename__ = "tenants"
-    __table_args__ = (
-        Index('idx_tenant_name', 'name', unique=True, postgresql_using='btree'),
-    )
+    __table_args__ = (Index("idx_tenant_name", "name", unique=True, postgresql_using="btree"),)
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     name: Mapped[str] = mapped_column(VARCHAR(255), nullable=False, unique=True)

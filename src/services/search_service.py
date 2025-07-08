@@ -2,7 +2,7 @@
 import json
 import logging
 from datetime import datetime
-from typing import List, Optional, Dict, Any
+from typing import Any, Dict, List, Optional
 
 import opensearchpy
 
@@ -27,10 +27,7 @@ class SearchService:
 
         Creates a connection to OpenSearch using the configured URL.
         """
-        self.opensearch = opensearchpy.OpenSearch(
-            hosts=[settings.OPENSEARCH_URL],
-            timeout=30
-        )
+        self.opensearch = opensearchpy.OpenSearch(hosts=[settings.OPENSEARCH_URL], timeout=30)
 
     async def search_logs(
         self,
@@ -38,7 +35,7 @@ class SearchService:
         query: Optional[str] = None,
         filters: Optional[Dict[str, Any]] = None,
         page: int = 1,
-        limit: int = 100
+        limit: int = 100,
     ) -> List[Dict[str, Any]]:
         """
         Search audit logs using OpenSearch with full-text search.
@@ -65,40 +62,36 @@ class SearchService:
                 }
             },
             "size": limit,
-            "from": (page - 1) * limit
+            "from": (page - 1) * limit,
         }
 
         # Add a full-text search query if provided
         if query:
-            body["query"]["bool"]["must"].append({
-                "multi_match": {
-                    "query": query,
-                    "fields": ["message", "log_metadata"],
-                    "type": "best_fields",
-                    "operator": "AND"
+            body["query"]["bool"]["must"].append(
+                {
+                    "multi_match": {
+                        "query": query,
+                        "fields": ["message", "log_metadata"],
+                        "type": "best_fields",
+                        "operator": "AND",
+                    }
                 }
-            })
+            )
 
         # Add additional filters
         if filters:
             for field, value in filters.items():
                 if isinstance(value, datetime):
-                    body["query"]["bool"]["must"].append({
-                        "range": {
-                            field: {"gte": value.isoformat()}
-                        }
-                    })
+                    body["query"]["bool"]["must"].append({"range": {field: {"gte": value.isoformat()}}})
                 else:
-                    body["query"]["bool"]["must"].append({
-                        "term": {field: value}
-                    })
+                    body["query"]["bool"]["must"].append({"term": {field: value}})
 
         try:
-            response = self.opensearch.search(
-                index=self.INDEX_NAME,
-                body=body
-            )
+            response = self.opensearch.search(index=self.INDEX_NAME, body=body)
             return [hit["_source"] for hit in response["hits"]["hits"]]
+        except opensearchpy.NotFoundError as e:
+            logger.debug(f"No index yet")
+            return []
         except Exception as e:
             logger.error(f"Search failed: {str(e)}")
             raise

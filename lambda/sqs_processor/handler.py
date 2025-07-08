@@ -1,17 +1,16 @@
 import json
 import logging
-import boto3
-from typing import Dict, Any
-
-import opensearchpy
 import os
+from typing import Any, Dict
 
+import boto3
+import opensearchpy
 from opensearchpy import OpenSearch
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 # Initialize clients
-sqs = boto3.client('sqs')
+sqs = boto3.client("sqs")
 
 TASK_INDEX_LOG = os.getenv("TASK_INDEX_LOG", "INDEX_LOG")
 INDEX_NAME = os.getenv("INDEX_NAME", "audit-logs")
@@ -21,7 +20,7 @@ def get_queue_url(queue_name: str) -> str:
     """Get the URL of the SQS queue."""
     try:
         response = sqs.get_queue_url(QueueName=queue_name)
-        return response['QueueUrl']
+        return response["QueueUrl"]
     except Exception as e:
         logger.error(f"Error getting queue URL: {str(e)}")
         raise
@@ -30,8 +29,8 @@ def get_queue_url(queue_name: str) -> str:
 def process_message(opensearch: OpenSearch, message: Dict[str, Any]) -> None:
     """Process a single SQS message."""
     try:
-        body = json.loads(message['body'])
-        task_type = body.get('task_type')
+        body = json.loads(message["body"])
+        task_type = body.get("task_type")
 
         if task_type == TASK_INDEX_LOG:
             process_index_log(opensearch, body)
@@ -49,7 +48,7 @@ def process_index_log(opensearch: OpenSearch, body: Dict[str, Any]) -> None:
     try:
         create_index(opensearch)
         logger.debug(f"body: {body}")
-        payload = body['payload']
+        payload = body["payload"]
         logger.info(f"Processing log index task: {payload['id']}")
         opensearch.index(
             index=INDEX_NAME,
@@ -63,8 +62,8 @@ def process_index_log(opensearch: OpenSearch, body: Dict[str, Any]) -> None:
                 "user_id": payload["user_id"],
                 "action": payload["action"],
                 "resource_type": payload["resource_type"],
-                "severity": payload["severity"]
-            }
+                "severity": payload["severity"],
+            },
         )
         logger.info(f"Indexed log entry: {payload['id']}")
 
@@ -89,7 +88,7 @@ def create_index(opensearch: OpenSearch) -> None:
                     "user_id": {"type": "keyword"},
                     "action": {"type": "keyword"},
                     "resource_type": {"type": "keyword"},
-                    "severity": {"type": "keyword"}
+                    "severity": {"type": "keyword"},
                 }
             }
         }
@@ -103,31 +102,21 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     """Lambda function handler."""
     try:
         opensearch = opensearchpy.OpenSearch(
-            hosts=[os.getenv("OPENSEARCH_URL", "http://opensearch_con:9200")],
-            timeout=30
+            hosts=[os.getenv("OPENSEARCH_URL", "http://opensearch_con:9200")], timeout=30
         )
         # Get messages from the event
-        records = event.get('Records', [])
+        records = event.get("Records", [])
 
         if not records:
             logger.warning("No records found in event")
-            return {
-                'statusCode': 200,
-                'body': 'No messages to process'
-            }
+            return {"statusCode": 200, "body": "No messages to process"}
 
         # Process each message
         for record in records:
             process_message(opensearch, record)
 
-        return {
-            'statusCode': 200,
-            'body': f'Processed {len(records)} messages'
-        }
+        return {"statusCode": 200, "body": f"Processed {len(records)} messages"}
 
     except Exception as e:
         logger.error(f"Error in lambda handler: {str(e)}")
-        return {
-            'statusCode': 500,
-            'body': str(e)
-        }
+        return {"statusCode": 500, "body": str(e)}

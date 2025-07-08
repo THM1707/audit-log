@@ -3,7 +3,7 @@ import sys
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from sqlalchemy import select, func
+from sqlalchemy import func, select
 
 # Add the project root to the Python path
 project_root = str(Path(__file__).parent)
@@ -11,17 +11,17 @@ if project_root not in sys.path:
     sys.path.insert(0, project_root)
 
 import uvicorn
-from fastapi import FastAPI, Request, HTTPException, Depends, APIRouter
+from fastapi import APIRouter, Depends, FastAPI, HTTPException, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from fastapi.exceptions import RequestValidationError
-from sqlalchemy.ext.asyncio import AsyncSession
 from pydantic import ValidationError
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.api.endpoints import logs, tenants, search, stream
+from src.api.endpoints import logs, search, stream, tenants
 from src.core.config import get_settings
 from src.database.pool import db_manager, get_db
-from src.middleware.dev_auth import mock_api_gateway_header, MockAPIGatewayASGIMiddleware
+from src.middleware.dev_auth import MockAPIGatewayASGIMiddleware, mock_api_gateway_header
 from src.models import AuditLog
 
 logger = logging.getLogger(__name__)
@@ -78,7 +78,7 @@ app = FastAPI(
     title="Audit Log API",
     description="API for managing audit logs with multi-tenant support",
     version="1.0.0",
-    lifespan=lifespan
+    lifespan=lifespan,
 )
 
 # # Add development middleware
@@ -116,15 +116,8 @@ async def validation_exception_handler(request: Request, exc: ValidationError):
     return JSONResponse(
         status_code=422,
         content={
-            "detail": [
-                {
-                    "loc": error["loc"],
-                    "msg": error["msg"],
-                    "type": error["type"]
-                }
-                for error in exc.errors()
-            ]
-        }
+            "detail": [{"loc": error["loc"], "msg": error["msg"], "type": error["type"]} for error in exc.errors()]
+        },
     )
 
 
@@ -132,13 +125,7 @@ async def validation_exception_handler(request: Request, exc: ValidationError):
 async def request_validation_exception_handler(request: Request, exc: RequestValidationError):
     """Handle FastAPI request validation errors."""
     logger.error(f"Request validation error in {request.url.path}: {exc.errors()}")
-    return JSONResponse(
-        status_code=422,
-        content={
-            "detail": exc.errors(),
-            "body": exc.body
-        }
-    )
+    return JSONResponse(status_code=422, content={"detail": exc.errors(), "body": exc.body})
 
 
 @app.get("/")
@@ -149,11 +136,8 @@ async def health_check():
 
     return {
         "status": "healthy" if is_db_healthy else "unhealthy",
-        "database": {
-            "status": "connected" if is_db_healthy else "disconnected",
-            "pool": pool_status
-        },
-        "version": "1.0.0"
+        "database": {"status": "connected" if is_db_healthy else "disconnected", "pool": pool_status},
+        "version": "1.0.0",
     }
 
 
@@ -172,8 +156,8 @@ async def metrics(db: AsyncSession = Depends(get_db)):
                 "total_logs": total_logs,
                 "timescale": {
                     "compression_interval": settings.LOG_COMPRESSION_INTERVAL,
-                    "retention_interval": settings.LOG_RETENTION_DAYS
-                }
+                    "retention_interval": settings.LOG_RETENTION_DAYS,
+                },
             },
         }
 

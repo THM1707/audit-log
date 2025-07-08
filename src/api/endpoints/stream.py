@@ -2,7 +2,7 @@
 
 import logging
 
-from fastapi import APIRouter, WebSocket, Depends
+from fastapi import APIRouter, Depends, WebSocket
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.responses import HTMLResponse
 
@@ -18,14 +18,9 @@ settings = config.get_settings()
 logger = logging.getLogger(__name__)
 
 
-@router.websocket(
-    "/stream",
-    dependencies=[Depends(role_required(UserRole.AUDITOR))]
-)
+@router.websocket("/stream", dependencies=[Depends(role_required(UserRole.AUDITOR))])
 async def stream_logs(
-    websocket: WebSocket,
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    websocket: WebSocket, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)
 ):
     """
     Real-time log streaming endpoint.
@@ -44,10 +39,7 @@ async def stream_logs(
         raise
 
 
-@router.get(
-    "/board",
-    dependencies=[Depends(role_required(UserRole.AUDITOR))]
-)
+@router.get("/board", dependencies=[Depends(role_required(UserRole.AUDITOR))])
 async def board():
     html = """
     <!DOCTYPE html>
@@ -133,20 +125,20 @@ async def board():
                         if (event.data === 'Checking for new logs') {
                             return;  // Skip heartbeat messages
                         }
-                        
+
                         // Parse the JSON data
                         const logEntries = JSON.parse(event.data);
-                        
+
                         // Clear previous logs if needed
                         // logsList.innerHTML = '';
-                        
+
                         // Add each log entry
                         logEntries.forEach(entry => {
                             const logItem = document.createElement('li');
                             // Format the timestamp if it exists
                             const timestamp = entry.timestamp || entry.created_at || new Date().toISOString();
                             const formattedTime = new Date(timestamp).toLocaleString();
-                            
+
                             // Create a more structured log entry
                             logItem.innerHTML = `
                                 <div class="log-entry">
@@ -157,10 +149,10 @@ async def board():
                                     ${entry.log_metadata ? `<div class="metadata">${JSON.stringify(entry.log_metadata, null, 2)}</div>` : ''}
                                 </div>
                             `;
-                            
+
                             // Add to the top of the list
                             logsList.insertBefore(logItem, logsList.firstChild);
-                            
+
                             // Limit the number of logs to show (optional)
                             if (logsList.children.length > 50) {
                                 logsList.removeChild(logsList.lastChild);

@@ -1,13 +1,16 @@
 """Audit log schemas."""
 
 from datetime import datetime
-from typing import Dict, Any, Optional
+from typing import Any, Dict, Optional
+
 from pydantic import BaseModel, ConfigDict
-from .enums import LogSeverity, LogAction
+
+from .enums import LogAction, LogSeverity
 
 
 class AuditLogBase(BaseModel):
     """Base audit log schema."""
+
     action: LogAction
     resource_type: str
     resource_id: str
@@ -22,11 +25,13 @@ class AuditLogBase(BaseModel):
 
 class AuditLogCreate(AuditLogBase):
     """Schema for creating audit logs."""
+
     pass
 
 
 class AuditLog(AuditLogBase):
     """Schema for audit logs."""
+
     id: int
     tenant_id: int
     created_at: datetime
@@ -42,6 +47,7 @@ class AuditLog(AuditLogBase):
 
 class AuditLogFilter(BaseModel):
     """Schema for filtering audit logs."""
+
     user_id: Optional[str] = None
     resource_type: Optional[str] = None
     action: Optional[LogAction] = None

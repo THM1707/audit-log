@@ -1,7 +1,7 @@
 """TimescaleDB initialization and configuration."""
 
 from sqlalchemy import text
-from sqlalchemy.ext.asyncio import AsyncEngine, AsyncConnection
+from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine
 
 from src.core import config
 
@@ -14,16 +14,19 @@ async def create_hypertable(conn: AsyncConnection):
     """
     # Create hypertable
     await conn.execute(
-        text("""
+        text(
+            """
             SELECT create_hypertable(
                 'audit_logs',
                 'created_at',
                 chunk_time_interval => INTERVAL '1 month',
-                partitioning_column => 'tenant_id', 
+                partitioning_column => 'tenant_id',
                 number_partitions => 4
             );
-        """)
+        """
+        )
     )
+
 
 async def add_policies(conn: AsyncConnection):
     # Set compression settings
@@ -41,24 +44,28 @@ async def add_policies(conn: AsyncConnection):
 
     # Then add the compression policy
     await conn.execute(
-        text("""
+        text(
+            """
             SELECT add_compression_policy(
                 'audit_logs',
                 INTERVAL '7 days',
                 if_not_exists => TRUE
             );
-        """)
+        """
+        )
     )
 
     # Set retention policy
     await conn.execute(
-        text("""
+        text(
+            """
             SELECT add_retention_policy(
                 'audit_logs',
                 INTERVAL '90 days',
                 if_not_exists => TRUE
             );
-        """)
+        """
+        )
     )
 
 

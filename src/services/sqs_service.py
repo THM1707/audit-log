@@ -3,7 +3,7 @@
 import json
 import logging
 from datetime import datetime, timezone
-from typing import Dict, Any
+from typing import Any, Dict
 
 import boto3
 
@@ -19,9 +19,9 @@ class SQSService:
     """Service class for handling SQS-based background tasks."""
 
     def __init__(self):
-        self.client = boto3.client('sqs', **settings.sqs_config)
+        self.client = boto3.client("sqs", **settings.sqs_config)
         response = self.client.get_queue_url(QueueName=settings.SQS_QUEUE_NAME)
-        self.queue_url = response['QueueUrl']
+        self.queue_url = response["QueueUrl"]
         self.search_service = SearchService()
 
     async def send_task(self, task_type: TaskType, payload: Dict[str, Any]) -> str:
@@ -40,10 +40,10 @@ class SQSService:
             Exception: If message sending fails
         """
         message = {
-            'task_type': task_type,
-            'payload': payload,
-            'created_at': datetime.now(timezone.utc).isoformat(),
-            'retries': 0
+            "task_type": task_type,
+            "payload": payload,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "retries": 0,
         }
 
         if not isinstance(task_type, TaskType):
@@ -53,14 +53,9 @@ class SQSService:
             response = self.client.send_message(
                 QueueUrl=self.queue_url,
                 MessageBody=json.dumps(message),
-                MessageAttributes={
-                    'task_type': {
-                        'DataType': 'String',
-                        'StringValue': str(task_type)
-                    }
-                }
+                MessageAttributes={"task_type": {"DataType": "String", "StringValue": str(task_type)}},
             )
-            msg_id = response['MessageId']
+            msg_id = response["MessageId"]
             logger.info(f"Task {msg_id} sent to SQS: {task_type}")
             return msg_id
         except Exception as e:

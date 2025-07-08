@@ -57,7 +57,7 @@ class Settings(BaseSettings):
         env_file=".env",  # Load variables from .env file
         env_file_encoding="utf-8",  # Encoding for the .env file
         case_sensitive=False,  # Environment variable names are case-insensitive by default
-        extra="ignore"
+        extra="ignore",
     )
 
     # Helper methods

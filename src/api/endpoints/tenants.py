@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.core import config
 from src.core.auth import role_required
 from src.database.pool import get_db
-from src.schemas import TenantCreate, Tenant, UserRole
+from src.schemas import Tenant, TenantCreate, UserRole
 from src.services.tenant_service import TenantService
 
 router = APIRouter(prefix="/tenants")
@@ -35,10 +35,7 @@ async def list_tenants(
     description="Create a new tenant",
     dependencies=[Depends(role_required(UserRole.ADMIN))],
 )
-async def create_tenant(
-    tenant: TenantCreate,
-    db: AsyncSession = Depends(get_db)
-):
+async def create_tenant(tenant: TenantCreate, db: AsyncSession = Depends(get_db)):
     """Create a new tenant."""
     tenant_service = TenantService(db)
     return await tenant_service.create_tenant(tenant.model_dump())

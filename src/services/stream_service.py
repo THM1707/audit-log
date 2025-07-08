@@ -7,7 +7,7 @@ from datetime import datetime, timedelta, timezone
 from typing import List, Sequence
 
 from fastapi.websockets import WebSocket, WebSocketDisconnect
-from sqlalchemy import select, Row, RowMapping
+from sqlalchemy import Row, RowMapping, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.models import AuditLog
@@ -46,10 +46,8 @@ class StreamService:
             # Get new logs
             query = (
                 select(AuditLog)
-                .where(
-                    AuditLog.tenant_id == tenant_id,
-                    AuditLog.created_at >= time_window
-                ).order_by(AuditLog.created_at)
+                .where(AuditLog.tenant_id == tenant_id, AuditLog.created_at >= time_window)
+                .order_by(AuditLog.created_at)
             )
 
             result = await self.db.execute(query)
@@ -59,19 +57,19 @@ class StreamService:
             logs_data = []
             for log in logs:
                 log_dict = {
-                    'id': log.id,
-                    'tenant_id': log.tenant_id,
-                    'user_id': log.user_id,
-                    'action': log.action,
-                    'resource_type': log.resource_type,
-                    'resource_id': log.resource_id,
-                    'message': log.message,
-                    'before_state': log.before_state,
-                    'after_state': log.after_state,
-                    'log_metadata': log.log_metadata,
-                    'severity': log.severity,
-                    'created_at': log.created_at.isoformat() if log.created_at else None,
-                    'updated_at': log.updated_at.isoformat() if log.updated_at else None
+                    "id": log.id,
+                    "tenant_id": log.tenant_id,
+                    "user_id": log.user_id,
+                    "action": log.action,
+                    "resource_type": log.resource_type,
+                    "resource_id": log.resource_id,
+                    "message": log.message,
+                    "before_state": log.before_state,
+                    "after_state": log.after_state,
+                    "log_metadata": log.log_metadata,
+                    "severity": log.severity,
+                    "created_at": log.created_at.isoformat() if log.created_at else None,
+                    "updated_at": log.updated_at.isoformat() if log.updated_at else None,
                 }
                 logs_data.append(log_dict)
 

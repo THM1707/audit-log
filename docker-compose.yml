@@ -109,8 +109,8 @@ services:
       - "9600:9600"
     networks:
       - audit-log-network
-    volumes:
-      - opensearch_data:/usr/share/opensearch/data
+#    volumes:
+#      - opensearch_data:/usr/share/opensearch/data
 
 volumes:
   postgres_data:

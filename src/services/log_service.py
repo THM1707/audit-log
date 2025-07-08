@@ -1,7 +1,7 @@
 from datetime import datetime
-from typing import Sequence, Optional
+from typing import Optional, Sequence
 
-from sqlalchemy import select, func, Row
+from sqlalchemy import Row, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.models import AuditLog
@@ -86,10 +86,7 @@ class LogService:
         """
 
         # since timescale DB using tenant id as a dimension, we also use tenant_id to make use of partitioning
-        stmt = select(AuditLog).where(
-            AuditLog.id == log_id,
-            AuditLog.tenant_id == tenant_id
-        )
+        stmt = select(AuditLog).where(AuditLog.id == log_id, AuditLog.tenant_id == tenant_id)
 
         result = await self.db.execute(stmt)
         return result.scalar_one_or_none()

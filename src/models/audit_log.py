@@ -1,46 +1,46 @@
 from datetime import datetime
-from typing import Optional, Dict, Any
+from typing import Any, Dict, Optional
 
-from sqlalchemy import ForeignKey, Text, Index, func, PrimaryKeyConstraint
+from sqlalchemy import ForeignKey, Index, PrimaryKeyConstraint, Text, func
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.types import Enum
 
-from src.schemas.enums import LogSeverity, LogAction
 from .base import Base, TimestampMixin
+from src.schemas.enums import LogAction, LogSeverity
 
 
 class AuditLog(Base, TimestampMixin):
     """Audit log model for tracking system events."""
+
     __tablename__ = "audit_logs"
 
     # Indexes are now defined separately using __table_args__ as a dictionary
     __table_args__ = (
         # Regular indexes
-        Index('idx_audit_logs_tenant_created', 'tenant_id', 'created_at', postgresql_using='btree'),
-        Index('idx_audit_logs_tenant_user_created', 'tenant_id', 'user_id', 'created_at', postgresql_using='btree'),
-        Index('idx_audit_logs_tenant_action_created', 'tenant_id', 'action', 'created_at', postgresql_using='btree'),
-        Index('idx_audit_logs_tenant_resource_type_created', 'tenant_id', 'resource_type', 'created_at',
-              postgresql_using='btree'),
-        Index('idx_audit_logs_tenant_severity_created', 'tenant_id', 'severity', 'created_at',
-              postgresql_using='btree'),
-        Index('idx_audit_logs_created_at', 'created_at', postgresql_using='brin'),
+        Index("idx_audit_logs_tenant_created", "tenant_id", "created_at", postgresql_using="btree"),
+        Index("idx_audit_logs_tenant_user_created", "tenant_id", "user_id", "created_at", postgresql_using="btree"),
+        Index("idx_audit_logs_tenant_action_created", "tenant_id", "action", "created_at", postgresql_using="btree"),
+        Index(
+            "idx_audit_logs_tenant_resource_type_created",
+            "tenant_id",
+            "resource_type",
+            "created_at",
+            postgresql_using="btree",
+        ),
+        Index(
+            "idx_audit_logs_tenant_severity_created", "tenant_id", "severity", "created_at", postgresql_using="btree"
+        ),
+        Index("idx_audit_logs_created_at", "created_at", postgresql_using="brin"),
     )
 
     # Composite primary key for TimescaleDB partitioning
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     tenant_id: Mapped[int] = mapped_column(
-        ForeignKey('tenants.id', ondelete='CASCADE'),
-        primary_key=True,
-        nullable=False,
-        index=True
+        ForeignKey("tenants.id", ondelete="CASCADE"), primary_key=True, nullable=False, index=True
     )
     created_at: Mapped[datetime] = mapped_column(
-        primary_key=True,
-        default=func.now(),
-        nullable=False,
-        index=True,
-        comment='Timestamp when the log was created'
+        primary_key=True, default=func.now(), nullable=False, index=True, comment="Timestamp when the log was created"
     )
     # Log details
     user_id: Mapped[str] = mapped_column(Text, nullable=False, index=True)
@@ -55,10 +55,7 @@ class AuditLog(Base, TimestampMixin):
     before_state: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSONB, nullable=True)
     after_state: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSONB, nullable=True)
     severity: Mapped[LogSeverity] = mapped_column(
-        Enum(LogSeverity),
-        nullable=False,
-        default=LogSeverity.INFO,
-        index=True
+        Enum(LogSeverity), nullable=False, default=LogSeverity.INFO, index=True
     )
 
     def __repr__(self):
