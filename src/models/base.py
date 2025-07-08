@@ -1,7 +1,7 @@
 """Base model definitions for SQLAlchemy 2.0 models."""
 
-from datetime import datetime, timezone
-from typing import Any, Callable, TypeVar, cast
+from datetime import datetime
+from typing import TypeVar
 
 from sqlalchemy import DateTime, func
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column

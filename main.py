@@ -3,6 +3,8 @@ import sys
 from contextlib import asynccontextmanager
 from pathlib import Path
 
+from fastapi.exceptions import RequestValidationError
+from pyexpat.errors import messages
 from sqlalchemy import func, select
 from starlette import status
 from starlette.exceptions import HTTPException
@@ -154,22 +156,29 @@ async def generic_exception_handler(request: Request, exc: Exception):
     """
     # Log the full traceback for debugging (critical for 500 errors)
     logger.exception(f"Unhandled exception during request to {request.url}:")
-
-    # In production, DO NOT expose the raw exception message or traceback to the client.
-    # Provide a generic, user-friendly message.
-    error_detail = ErrorDetail(
-        message="An unexpected server error occurred. Please try again later.", code="INTERNAL_SERVER_ERROR"
+    return JSONResponse(
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        content={"message": "An unexpected server error occurred. Please try again later."},
     )
+
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    """
+    Handles Pydantic validation errors specifically for request bodies/queries/paths.
+    This will generate the 422 responses in your custom format.
+    """
+    errors = []
+    for error in exc.errors():
+        field_path = ".".join(map(str, error["loc"])) if error["loc"] else None  # Handles tuples correctly
+        errors.append(ErrorDetail(field=field_path, message=error["msg"], code=error["type"]))
     error_response = ErrorResponse(
-        status="error",
-        message="An internal server error prevented the request from completing.",
-        errors=[error_detail],
-        code="500",
+        status="error", message="Request validation failed.", errors=errors, code="VALIDATION_ERROR"
     )
-    return JSONResponse(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, content=error_response.model_dump())
+    return JSONResponse(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, content=error_response.model_dump())
 
 
-@app.get("/", tags=["Mics"])
+@app.get("/health", tags=["Mics"])
 async def health_check():
     """Application health check"""
     is_db_healthy = await db_manager.health_check()

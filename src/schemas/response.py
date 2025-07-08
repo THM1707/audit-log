@@ -20,9 +20,6 @@ class BaseResponse(BaseModel):
 
     status: str = Field(..., description="Status of the response (e.g., 'success', 'error').")
     message: Optional[str] = Field(None, description="A human-readable message about the response.")
-    timestamp: datetime = Field(
-        default_factory=lambda: datetime.now(timezone.utc), description="Timestamp of the response in UTC."
-    )
 
 
 class DataResponse(BaseResponse, Generic[T]):

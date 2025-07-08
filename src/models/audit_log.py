@@ -65,3 +65,13 @@ class AuditLog(Base, TimestampMixin):
 
     def __repr__(self):
         return f"tenant_id={self.tenant_id}, action={self.action})"
+
+    def to_dict(self):
+        result = {}
+        for column in self.__table__.columns:
+            value = getattr(self, column.name)
+            if isinstance(value, datetime):
+                value = value.isoformat()
+            result[column.name] = value
+
+        return result

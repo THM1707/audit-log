@@ -166,7 +166,7 @@ async def export_logs_csv(
     """
     # Get logs from the database
     log_service = LogService(db)
-    logs: Sequence[AuditLog] = await log_service.get_logs(
+    logs = await log_service.get_logs(
         tenant_id=current_user.tenant_id,
         user_id=log_filter.user_id,
         resource_type=log_filter.resource_type,
@@ -251,7 +251,7 @@ async def export_logs_json(
     """
     # Get logs from the database
     log_service = LogService(db)
-    logs: Sequence[Row[tuple[AuditLog]]] = await log_service.get_logs(
+    logs = await log_service.get_logs(
         tenant_id=current_user.tenant_id,
         user_id=log_filter.user_id,
         resource_type=log_filter.resource_type,
@@ -259,12 +259,11 @@ async def export_logs_json(
         severity=log_filter.severity,
         start_date=log_filter.start_date,
         end_date=log_filter.end_date,
-        as_json=True,
     )
 
     validate_export_limit(len(logs))
     output = io.StringIO()
-    json.dump([log._asdict() for log in logs], output)
+    json.dump([log.to_dict() for log in logs], output)
     output.seek(0)
 
     return StreamingResponse(

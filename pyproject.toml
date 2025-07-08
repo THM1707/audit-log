@@ -9,3 +9,6 @@ known_local_folder = ["src"]
 
 [tool.black]
 line_length = 120
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]

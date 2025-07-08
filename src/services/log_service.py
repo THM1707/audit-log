@@ -31,8 +31,7 @@ class LogService:
         end_date: Optional[datetime] = None,
         page: int = 1,
         limit: int = 100,
-        as_json: bool = False,
-    ) -> Sequence[AuditLog] | Sequence[Row[tuple[AuditLog]]]:
+    ) -> Sequence[AuditLog]:
         """Get audit logs with filtering options.
 
         Args:
@@ -45,7 +44,6 @@ class LogService:
             end_date: Optional end date to filter logs by
             page: Page number for pagination
             limit: Number of items per page
-            as_json: Return fetchall to make use of _asdict() method in result
 
         Returns:
             List of audit logs matching the filters
@@ -70,8 +68,6 @@ class LogService:
         stmt = stmt.offset(offset).limit(limit)
 
         result = await self.db.execute(stmt)
-        if as_json:
-            return result.fetchall()
         return result.scalars().all()
 
     async def get_log_by_id(self, log_id: int, tenant_id: int) -> Optional[AuditLog]:
