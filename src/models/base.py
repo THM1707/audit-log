@@ -19,11 +19,6 @@ class Base(DeclarativeBase):
     pass
 
 
-def now_utc() -> datetime:
-    """Get current UTC timestamp."""
-    return datetime.now(timezone.utc)
-
-
 class TimestampMixin:
     """
     Mixin that adds timestamp fields to models.

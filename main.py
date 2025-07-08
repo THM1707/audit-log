@@ -4,6 +4,10 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 from sqlalchemy import func, select
+from starlette import status
+from starlette.exceptions import HTTPException
+
+from src.schemas.response import ErrorDetail, ErrorResponse
 
 # Add the project root to the Python path
 project_root = str(Path(__file__).parent)
@@ -12,7 +16,6 @@ if project_root not in sys.path:
 
 import uvicorn
 from fastapi import APIRouter, Depends, FastAPI, HTTPException, Request
-from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import ValidationError
@@ -21,7 +24,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.api.endpoints import logs, search, stream, tenants
 from src.core.config import get_settings
 from src.database.pool import db_manager, get_db
-from src.middleware.dev_auth import MockAPIGatewayASGIMiddleware, mock_api_gateway_header
+from src.middleware.dev_auth import MockAPIGatewayASGIMiddleware
 from src.models import AuditLog
 
 logger = logging.getLogger(__name__)
@@ -109,26 +112,64 @@ api_router.include_router(tenants.router, tags=["Tenants"])
 app.include_router(api_router)
 
 
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request: Request, exc: HTTPException):
+    """
+    Handles FastAPI's HTTPException (e.g., 404, 401, 403, 413).
+    These are "expected" HTTP errors.
+    """
+    error_detail = ErrorDetail(message=exc.detail, code=f"HTTP_{exc.status_code}")
+    error_response = ErrorResponse(
+        status="error",
+        message=f"Request failed with HTTP status code {exc.status_code}",
+        errors=[error_detail],
+        code=str(exc.status_code),
+    )
+    return JSONResponse(status_code=exc.status_code, content=error_response.model_dump())
+
+
 @app.exception_handler(ValidationError)
 async def validation_exception_handler(request: Request, exc: ValidationError):
-    """Handle Pydantic validation errors."""
-    logger.error(f"Validation error in {request.url.path}: {exc.errors()}")
-    return JSONResponse(
-        status_code=422,
-        content={
-            "detail": [{"loc": error["loc"], "msg": error["msg"], "type": error["type"]} for error in exc.errors()]
-        },
+    """
+    Handles Pydantic validation errors (often results in 422 Unprocessable Entity).
+    """
+    errors = []
+    for error in exc.errors():
+        errors.append(
+            ErrorDetail(
+                field=".".join(error["loc"]) if error["loc"] else None, message=error["msg"], code=error["type"]
+            )
+        )
+    error_response = ErrorResponse(
+        status="error", message="Validation error occurred.", errors=errors, code="VALIDATION_ERROR"
     )
+    return JSONResponse(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, content=error_response.model_dump())
 
 
-@app.exception_handler(RequestValidationError)
-async def request_validation_exception_handler(request: Request, exc: RequestValidationError):
-    """Handle FastAPI request validation errors."""
-    logger.error(f"Request validation error in {request.url.path}: {exc.errors()}")
-    return JSONResponse(status_code=422, content={"detail": exc.errors(), "body": exc.body})
+@app.exception_handler(Exception)
+async def generic_exception_handler(request: Request, exc: Exception):
+    """
+    Handles all other unhandled exceptions (resulting in 500 Internal Server Error).
+    This is your catch-all for unexpected issues.
+    """
+    # Log the full traceback for debugging (critical for 500 errors)
+    logger.exception(f"Unhandled exception during request to {request.url}:")
+
+    # In production, DO NOT expose the raw exception message or traceback to the client.
+    # Provide a generic, user-friendly message.
+    error_detail = ErrorDetail(
+        message="An unexpected server error occurred. Please try again later.", code="INTERNAL_SERVER_ERROR"
+    )
+    error_response = ErrorResponse(
+        status="error",
+        message="An internal server error prevented the request from completing.",
+        errors=[error_detail],
+        code="500",
+    )
+    return JSONResponse(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, content=error_response.model_dump())
 
 
-@app.get("/")
+@app.get("/", tags=["Mics"])
 async def health_check():
     """Application health check"""
     is_db_healthy = await db_manager.health_check()
@@ -141,7 +182,7 @@ async def health_check():
     }
 
 
-@app.get("/metrics")
+@app.get("/metrics", tags=["Mics"])
 async def metrics(db: AsyncSession = Depends(get_db)):
     """Get service metrics."""
 

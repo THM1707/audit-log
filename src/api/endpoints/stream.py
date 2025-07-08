@@ -23,12 +23,12 @@ async def stream_logs(
     websocket: WebSocket, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)
 ):
     """
-    Real-time log streaming endpoint.
+    Websocket endpoint for streaming logs.
 
     Args:
         websocket (WebSocket): WebSocket connection
         db (AsyncSession): Database session
-        current_user (User): Current authenticated user
+        current_user (User): Session user
     """
     try:
         stream_service = StreamService(db)
@@ -41,6 +41,11 @@ async def stream_logs(
 
 @router.get("/board", dependencies=[Depends(role_required(UserRole.AUDITOR))])
 async def board():
+    """
+    Real-time log streaming endpoint.
+    Returns:
+        HTMLResponse: A demo page for log streaming
+    """
     html = """
     <!DOCTYPE html>
     <html>

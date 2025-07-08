@@ -15,6 +15,7 @@ from src.core.auth import get_current_user, role_required
 from src.database import get_db
 from src.enums.task_type import TaskType
 from src.schemas import AuditLog, AuditLogCreate, AuditLogFilter, User, UserRole
+from src.schemas.response import DataResponse, ErrorResponse
 from src.services.log_service import LogService
 from src.services.sqs_service import SQSService
 
@@ -25,14 +26,13 @@ settings = config.get_settings()
 
 @router.post(
     "/",
-    response_model=AuditLog,
     status_code=status.HTTP_201_CREATED,
     description="Create a new audit log entry",
     dependencies=[Depends(role_required(UserRole.USER))],
 )
 async def create_log(
     log: AuditLogCreate, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)
-):
+) -> DataResponse[AuditLog]:
     """
     Create a new audit log entry.
 
@@ -42,7 +42,7 @@ async def create_log(
         current_user (User): Current authenticated user
 
     Returns:
-        AuditLog: Created audit log entry
+        DataResponse[AuditLog]: Created audit log entry
 
     Raises:
         HTTPException: If user is not authorized or tenant ID doesn't match
@@ -71,12 +71,11 @@ async def create_log(
         },
     )
 
-    return AuditLog.from_model(result)
+    return DataResponse(data=AuditLog.from_model(result))
 
 
 @router.get(
     "/",
-    response_model=List[AuditLog],
     description="Get audit logs with filtering options",
     dependencies=[Depends(role_required(UserRole.AUDITOR))],
 )
@@ -84,7 +83,7 @@ async def get_logs(
     log_filter: AuditLogFilter = Depends(),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> Sequence[AuditLog]:
+) -> DataResponse[List[AuditLog]]:
     """
     Get audit logs for a tenant with filtering options.
 
@@ -94,32 +93,33 @@ async def get_logs(
         current_user (User): Current authenticated user
 
     Returns:
-        List[AuditLog]: List of audit logs matching the filters
+        DataResponse[List[AuditLog]]: List of audit logs matching the filters
 
     Raises:
         HTTPException: If user is not authorized
     """
     log_service = LogService(db)
-    return await log_service.get_logs(
-        tenant_id=current_user.tenant_id,
-        user_id=log_filter.user_id,
-        resource_type=log_filter.resource_type,
-        action=log_filter.action,
-        severity=log_filter.severity,
-        start_date=log_filter.start_date,
-        end_date=log_filter.end_date,
+    return DataResponse(
+        data=await log_service.get_logs(
+            tenant_id=current_user.tenant_id,
+            user_id=log_filter.user_id,
+            resource_type=log_filter.resource_type,
+            action=log_filter.action,
+            severity=log_filter.severity,
+            start_date=log_filter.start_date,
+            end_date=log_filter.end_date,
+        )
     )
 
 
 @router.get(
     "{log_id}",
-    response_model=AuditLog,
     description="Get a specific audit log entry",
     dependencies=[Depends(role_required(UserRole.AUDITOR))],
 )
 async def get_log_by_id(
     log_id: int, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)
-) -> AuditLog:
+) -> DataResponse[AuditLog]:
     """
     Get a specific audit log entry.
 
@@ -129,7 +129,7 @@ async def get_log_by_id(
         log_id (int): ID of the log entry
 
     Returns:
-        AuditLog: Audit log entry
+        DataResponse[AuditLog]: Audit log entry
 
     Raises:
         HTTPException: If log entry not found
@@ -138,7 +138,7 @@ async def get_log_by_id(
     log = await log_service.get_log_by_id(log_id, current_user.tenant_id)
     if log is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Log entry not found")
-    return log
+    return DataResponse(data=log)
 
 
 @router.get(
@@ -151,7 +151,7 @@ async def export_logs_csv(
     log_filter: AuditLogFilter = Depends(),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> StreamingResponse:
     """
     Export audit logs in CSV format and send to SQS queue.
 
@@ -161,7 +161,8 @@ async def export_logs_csv(
         current_user (User): session_user
 
     Returns:
-        JSONResponse: Export started successfully
+        StreamingResponse: Export started successfully
+        ErrorResponse: Exceed number of audit log entries
     """
     # Get logs from the database
     log_service = LogService(db)
@@ -174,6 +175,8 @@ async def export_logs_csv(
         start_date=log_filter.start_date,
         end_date=log_filter.end_date,
     )
+
+    validate_export_limit(len(logs))
 
     # Create CSV buffer
     csv_buffer = io.StringIO()
@@ -233,7 +236,7 @@ async def export_logs_json(
     log_filter: AuditLogFilter = Depends(),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> StreamingResponse:
     """
     Export audit logs in JSON format
 
@@ -243,7 +246,8 @@ async def export_logs_json(
         current_user (User): session_user
 
     Returns:
-        JSONResponse: Export started successfully
+        StreamingResponse: Export started successfully
+        ErrorResponse: Export failed due to exceed number of audit logs
     """
     # Get logs from the database
     log_service = LogService(db)
@@ -259,7 +263,6 @@ async def export_logs_json(
     )
 
     validate_export_limit(len(logs))
-
     output = io.StringIO()
     json.dump([log._asdict() for log in logs], output)
     output.seek(0)

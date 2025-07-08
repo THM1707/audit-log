@@ -7,9 +7,10 @@ from src.core import config
 from src.core.auth import role_required
 from src.database.pool import get_db
 from src.schemas import Tenant, TenantCreate, UserRole
+from src.schemas.response import DataResponse
 from src.services.tenant_service import TenantService
 
-router = APIRouter(prefix="/tenants")
+router = APIRouter(prefix="/tenants", tags=["Admin"])
 
 settings = config.get_settings()
 
@@ -22,10 +23,15 @@ settings = config.get_settings()
 )
 async def list_tenants(
     db: AsyncSession = Depends(get_db),
-):
-    """List all accessible tenants."""
+) -> DataResponse[List[Tenant]]:
+    """
+    List all tenants. Only for Admins
+
+    Returns:
+        DataResponse[List[Tenant]]: List of all tenants
+    """
     tenant_service = TenantService(db)
-    return await tenant_service.list_tenants()
+    return DataResponse(data=await tenant_service.list_tenants())
 
 
 @router.post(
@@ -36,6 +42,14 @@ async def list_tenants(
     dependencies=[Depends(role_required(UserRole.ADMIN))],
 )
 async def create_tenant(tenant: TenantCreate, db: AsyncSession = Depends(get_db)):
-    """Create a new tenant."""
+    """
+    Create a new tenant
+    Args:
+        tenant (TenantCreate): The tenant to create
+        db (AsyncSession): Database session
+
+    Returns:
+        DataResponse[Tenant]: Created tenant
+    """
     tenant_service = TenantService(db)
-    return await tenant_service.create_tenant(tenant.model_dump())
+    return DataResponse(data=await tenant_service.create_tenant(tenant.model_dump()))

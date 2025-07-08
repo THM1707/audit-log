@@ -1,9 +1,9 @@
 from datetime import datetime
 from typing import Any, Dict, Optional
 
-from sqlalchemy import ForeignKey, Index, PrimaryKeyConstraint, Text, func
+from sqlalchemy import DateTime, ForeignKey, Index, Text, func
 from sqlalchemy.dialects.postgresql import JSONB
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.types import Enum
 
 from .base import Base, TimestampMixin
@@ -40,7 +40,12 @@ class AuditLog(Base, TimestampMixin):
         ForeignKey("tenants.id", ondelete="CASCADE"), primary_key=True, nullable=False, index=True
     )
     created_at: Mapped[datetime] = mapped_column(
-        primary_key=True, default=func.now(), nullable=False, index=True, comment="Timestamp when the log was created"
+        DateTime(timezone=True),
+        primary_key=True,
+        default=func.now(),
+        nullable=False,
+        index=True,
+        comment="Timestamp when the log was created",
     )
     # Log details
     user_id: Mapped[str] = mapped_column(Text, nullable=False, index=True)
