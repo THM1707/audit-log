@@ -15,6 +15,8 @@ from src.core.auth import role_required, get_current_user
 from src.database import get_db
 from src.schemas import AuditLog, AuditLogCreate, AuditLogFilter, UserRole, User
 from src.services.log_service import LogService
+from src.enums.task_type import TaskType
+from src.services.sqs_service import SQSService
 
 router = APIRouter(prefix="/logs")
 
@@ -53,6 +55,24 @@ async def create_log(
     log_data["tenant_id"] = current_user.tenant_id
     log_data["user_id"] = current_user.id
     result = await log_service.create_log(log_data)
+    
+    # Send indexing task to SQS
+    sqs_service = SQSService()
+    await sqs_service.send_task(
+        task_type=TaskType.INDEX_LOG,
+        payload={
+            "id": result.id,
+            "tenant_id": current_user.tenant_id,
+            "message": result.message,
+            "log_metadata": result.log_metadata,
+            "created_at": result.created_at.isoformat(),
+            "user_id": result.user_id,
+            "action": result.action,
+            "resource_type": result.resource_type,
+            "severity": result.severity
+        }
+    )
+    
     return AuditLog.from_model(result)
 
 

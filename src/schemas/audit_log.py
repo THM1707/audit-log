@@ -16,8 +16,8 @@ class AuditLogBase(BaseModel):
     message: str
     before_state: Optional[Dict[str, Any]] = None
     after_state: Optional[Dict[str, Any]] = None
-    metadata: Optional[Dict[str, Any]] = None
-    severity: LogSeverity = "INFO"
+    log_metadata: Optional[Dict[str, Any]] = None
+    severity: LogSeverity = "info"
 
 
 class AuditLogCreate(AuditLogBase):

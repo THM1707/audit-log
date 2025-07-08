@@ -3,21 +3,25 @@ import sys
 from contextlib import asynccontextmanager
 from pathlib import Path
 
+from sqlalchemy import select, func
+
 # Add the project root to the Python path
 project_root = str(Path(__file__).parent)
 if project_root not in sys.path:
     sys.path.insert(0, project_root)
 
 import uvicorn
-from fastapi import FastAPI, HTTPException, Depends, APIRouter
+from fastapi import FastAPI, Request, HTTPException, Depends, APIRouter
 from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy import select, func
+from fastapi.responses import JSONResponse
+from fastapi.exceptions import RequestValidationError
 from sqlalchemy.ext.asyncio import AsyncSession
+from pydantic import ValidationError
 
-from src.api.endpoints import logs, tenants
+from src.api.endpoints import logs, tenants, search, stream
 from src.core.config import get_settings
 from src.database.pool import db_manager, get_db
-from src.middleware.dev_auth import mock_api_gateway_header
+from src.middleware.dev_auth import mock_api_gateway_header, MockAPIGatewayASGIMiddleware
 from src.models import AuditLog
 
 logger = logging.getLogger(__name__)
@@ -25,7 +29,7 @@ settings = get_settings()
 
 
 @asynccontextmanager
-async def lifespan(application: FastAPI):
+async def lifespan(_: FastAPI):
     """FastAPI lifespan context manager"""
     # Startup
     logger.info("🚀 Application startup...")
@@ -43,6 +47,8 @@ async def lifespan(application: FastAPI):
             logger.error("❌ Database connection failed")
             raise RuntimeError("Database initialization failed")
 
+        logger.info("✅ Background worker started")
+
         logger.info("🎉 Application startup complete")
 
     except Exception as e:
@@ -55,8 +61,14 @@ async def lifespan(application: FastAPI):
     logger.info("🛑 Application shutdown...")
 
     try:
+        # Stop background worker
+        logger.info("✅ Background worker stopped")
+
+        # Close database connection
         await db_manager.close_db()
-        logger.info("✅ Application shutdown complete")
+        logger.info("✅ Database connection closed")
+
+        logger.info("✨ Application shutdown complete")
 
     except Exception as e:
         logger.error(f"💥 Shutdown error: {e}")
@@ -70,7 +82,9 @@ app = FastAPI(
 )
 
 # # Add development middleware
-app.middleware("http")(mock_api_gateway_header)
+# app.middleware("http")(mock_api_gateway_header)
+# app.middleware("websocket")(mock_api_gateway_header)
+app.add_middleware(MockAPIGatewayASGIMiddleware)
 
 # CORS configuration
 app.add_middleware(
@@ -86,8 +100,8 @@ api_router = APIRouter(prefix="/api")
 
 # Include API routers
 api_router.include_router(logs.router, tags=["Logs"])
-# api_router.include_router(search.router, tags=["Search"])
-# api_router.include_router(stream.router, tags=["Stream"])
+api_router.include_router(search.router, tags=["Search"])
+api_router.include_router(stream.router, tags=["Stream"])
 api_router.include_router(tenants.router, tags=["Tenants"])
 # api_router.include_router(export.router, tags=["Export"])
 
@@ -95,13 +109,39 @@ api_router.include_router(tenants.router, tags=["Tenants"])
 app.include_router(api_router)
 
 
+@app.exception_handler(ValidationError)
+async def validation_exception_handler(request: Request, exc: ValidationError):
+    """Handle Pydantic validation errors."""
+    logger.error(f"Validation error in {request.url.path}: {exc.errors()}")
+    return JSONResponse(
+        status_code=422,
+        content={
+            "detail": [
+                {
+                    "loc": error["loc"],
+                    "msg": error["msg"],
+                    "type": error["type"]
+                }
+                for error in exc.errors()
+            ]
+        }
+    )
+
+
+@app.exception_handler(RequestValidationError)
+async def request_validation_exception_handler(request: Request, exc: RequestValidationError):
+    """Handle FastAPI request validation errors."""
+    logger.error(f"Request validation error in {request.url.path}: {exc.errors()}")
+    return JSONResponse(
+        status_code=422,
+        content={
+            "detail": exc.errors(),
+            "body": exc.body
+        }
+    )
+
+
 @app.get("/")
-async def root():
-    """Root endpoint."""
-    return {"message": "Welcome to Audit Log API"}
-
-
-@app.get("/health")
 async def health_check():
     """Application health check"""
     is_db_healthy = await db_manager.health_check()

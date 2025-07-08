@@ -4,27 +4,79 @@ networks:
 
 services:
   app:
-    build: .
+    build:
+      context: .
+      target: app
     ports:
       - "8000:8000"
     environment:
       - DATABASE_URL=postgresql+asyncpg://postgres:postgres@db:5432/audit_log
       - SECRET_KEY=your-secret-key-here
       - ACCESS_TOKEN_EXPIRE_MINUTES=30
-      - OPENSEARCH_URL=http://opensearch:9200
       - DEBUG=True
       - LOG_LEVEL=INFO
       - CORS_ORIGINS=['*']
-      - SQS_QUEUE_URL=http://sqs:9324/queue/audit-log-queue
+      - AWS_ACCESS_KEY_ID=test
+      - AWS_SECRET_ACCESS_KEY=test
+      - AWS_REGION=ap-northeast-1
+      - SQS_ENDPOINT_URL=http://localstack-main:4566
+      - SQS_QUEUE_URL=http://localstack-main:4566/000000000000/audit-log-queue
+      - OPENSEARCH_URL=http://opensearch_con:9200
     depends_on:
-      - db
-      # - opensearch
-      # - sqs
+      db:
+        condition: service_healthy
+      opensearch:
+        condition: service_started
+      localstack:
+        condition: service_healthy
     volumes:
       - .:/app
+      - /app/__pycache__
+      - /app/.pytest_cache
     networks:
       - audit-log-network
-    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+
+  worker:
+    build:
+      context: .
+      target: worker
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://postgres:postgres@db:5432/audit_log
+      - AWS_ACCESS_KEY_ID=test
+      - AWS_SECRET_ACCESS_KEY=test
+      - AWS_REGION=ap-northeast-1
+      - SQS_ENDPOINT_URL=http://localstack-main:4566
+      - SQS_QUEUE_URL=http://localstack-main:4566/000000000000/audit-log-queue
+      - OPENSEARCH_URL=http://opensearch_con:9200
+      - SQS_MAX_MESSAGES=10
+      - SQS_VISIBILITY_TIMEOUT=300
+      - SQS_WAIT_TIME_SECONDS=20
+      - SQS_MAX_RETRIES=3
+    depends_on:
+      db:
+        condition: service_healthy
+      opensearch:
+        condition: service_started
+      localstack:
+        condition: service_healthy
+    networks:
+      - audit-log-network
+
+  lambda-deploy:
+    build:
+      context: ./lambda/sqs_processor
+      dockerfile: Dockerfile
+    environment:
+      - AWS_ACCESS_KEY_ID=test
+      - AWS_SECRET_ACCESS_KEY=test
+      - AWS_REGION=ap-northeast-1
+    volumes:
+      - ./lambda/sqs_processor:/app
+    depends_on:
+      localstack:
+        condition: service_healthy
+    networks:
+      - audit-log-network
 
   db:
     image: timescale/timescaledb-ha:pg17
@@ -40,32 +92,46 @@ services:
     networks:
       - audit-log-network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      test: [ "CMD-SHELL", "pg_isready -U postgres -d audit_log" ]
       interval: 5s
       timeout: 5s
-      retries: 5
+      retries: 10
 
-  # opensearch:
-  #   image: opensearchproject/opensearch:2.11.0
-  #   ports:
-  #     - "9200:9200"
-  #     - "9600:9600"
-  #   environment:
-  #     - discovery.type=single-node
-  #   volumes:
-  #     - opensearch_data:/usr/share/opensearch/data
-  #   networks:
-  #     - audit-log-network
+  # LocalStack for AWS services
+  localstack:
+    container_name: "${LOCALSTACK_DOCKER_NAME:-localstack-main}"
+    image: localstack/localstack
+    ports:
+      - "127.0.0.1:4566:4566"            # LocalStack Gateway
+      - "127.0.0.1:4510-4559:4510-4559"  # external services port range
+    environment:
+      # LocalStack configuration: https://docs.localstack.cloud/references/configuration/
+      - DEBUG=${DEBUG:-0}
+    volumes:
+      - "${LOCALSTACK_VOLUME_DIR:-./volume}:/var/lib/localstack"
+      - "/var/run/docker.sock:/var/run/docker.sock"
+    networks:
+      - audit-log-network
 
-  # sqs:
-  #   image: softwaremill/elasticmq-native:0.14.17
-  #   ports:
-  #     - "9324:9324"
-  #   environment:
-  #     - AWS_ACCESS_KEY_ID=local
-  #     - AWS_SECRET_ACCESS_KEY=local
-  #   networks:
-  #     - audit-log-network
+
+  opensearch:
+    image: opensearchproject/opensearch:2.11.0
+    container_name: opensearch_con
+    environment:
+      - discovery.type=single-node
+      # --- IMPORTANT: Disable Security Plugin ---
+      - DISABLE_SECURITY_PLUGIN=true
+      - DISABLE_INSTALL_DEMO_CONFIG=true # Prevents demo security setup from running
+      # --- END Security Plugin Disable ---
+      - bootstrap.memory_lock=true # For production, ensure you have memlock limits
+      - "OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m" # Adjust memory as needed for dev
+    ports:
+      - "9200:9200"
+      - "9600:9600"
+    networks:
+      - audit-log-network
+    volumes:
+      - opensearch_data:/usr/share/opensearch/data
 
 volumes:
   postgres_data:

@@ -3,7 +3,6 @@ from typing import Dict
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-
 from pathlib import Path
 from dotenv import load_dotenv
 
@@ -11,7 +10,10 @@ from dotenv import load_dotenv
 env_path = Path(__file__).parent.parent.parent / ".env"
 load_dotenv(dotenv_path=env_path)
 
+
 class Settings(BaseSettings):
+    ENVIRONMENT: str = "local"
+
     # Database
     DATABASE_URL: str = "postgresql://user:password@localhost:5432/audit_log"
 
@@ -24,11 +26,22 @@ class Settings(BaseSettings):
     DEBUG: bool = True
     LOG_LEVEL: str = "INFO"
 
+    # AWS
+    AWS_REGION: str = "ap-northeast-1"  # Default region for LocalStack
+    AWS_ACCESS_KEY_ID: str = "test"
+    AWS_SECRET_ACCESS_KEY: str = "test"
+
     # SQS
-    SQS_QUEUE_URL: str = ""
+    SQS_ENDPOINT_URL: str = ""
+    QUEUE_NAME: str = "audit-log-queue"
+    SQS_MAX_RETRIES: int = 3
     SQS_MAX_MESSAGES: int = 10
     SQS_VISIBILITY_TIMEOUT: int = 300  # 5 minutes
     SQS_WAIT_TIME_SECONDS: int = 20
+    DLQ_QUEUE_URL: str | None = None  # Optional DLQ URL
+
+    # LOCALSTACK
+    LOCALSTACK_ENDPOINT_URL: str = "http://localhost:4566"
 
     # OpenSearch
     OPENSEARCH_URL: str = "http://opensearch:9200"
@@ -51,18 +64,18 @@ class Settings(BaseSettings):
     CORS_METHODS: str = "*"
     CORS_HEADERS: str = "*"
 
+    # CUSTOM HEADERS
+    X_TENANT_ID: str = "X-Tenant-Id"
+    X_USER_ID: str = "X-User-Id"
+    X_USER_NAME: str = "X-User-Name"
+    X_USER_ROLE: str = "X-User-Role"
+
     model_config = SettingsConfigDict(
         env_file=".env",  # Load variables from .env file
         env_file_encoding="utf-8",  # Encoding for the .env file
         case_sensitive=False,  # Environment variable names are case-insensitive by default
         extra="ignore"
     )
-
-    # CUSTOM HEADERS
-    X_TENANT_ID: str = "X-Tenant-Id"
-    X_USER_ID: str = "X-User-Id"
-    X_USER_NAME: str = "X-User-Name"
-    X_USER_ROLE: str = "X-User-Role"
 
     # Helper methods
     def get_cors_config(self) -> Dict[str, str]:
@@ -74,14 +87,37 @@ class Settings(BaseSettings):
             "allow_headers": self.CORS_HEADERS.split(",") if isinstance(self.CORS_HEADERS, str) else self.CORS_HEADERS,
         }
 
+    @property
+    def is_local(self) -> bool:
+        return self.ENVIRONMENT == "local"
+
+    @property
+    def sqs_config(self) -> dict:
+        config = {
+            "region_name": self.AWS_REGION,
+        }
+
+        if self.is_local:
+            # LocalStack configuration
+            config.update({
+                "endpoint_url": self.SQS_ENDPOINT_URL or self.LOCALSTACK_ENDPOINT_URL,
+                "aws_access_key_id": "test",
+                "aws_secret_access_key": "test",
+            })
+        else:
+            # Production AWS configuration
+            if self.AWS_ACCESS_KEY_ID and self.AWS_SECRET_ACCESS_KEY:
+                config.update({
+                    "aws_access_key_id": self.AWS_ACCESS_KEY_ID,
+                    "aws_secret_access_key": self.AWS_SECRET_ACCESS_KEY,
+                })
+            # If not provided, boto3 will use IAM roles/profiles
+
+        return config
+
+
 @lru_cache
 def get_settings() -> Settings:
     """Get cached settings instance."""
     settings = Settings()
-    if settings.DEBUG:
-        print("\n--- Loaded Settings ---")
-        for field_name, field_value in settings.model_dump().items():
-            print(f"{field_name}: {field_value}")
-        print("---------------------\n")
-
     return settings

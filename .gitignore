@@ -1,0 +1,93 @@
+# Python
+# ========================
+# Byte-code files
+*.pyc
+__pycache__/
+*.pyd
+*.pyo
+.Python
+build/
+dist/
+*.egg-info/
+.eggs/
+# Temporary files
+*.swp
+*.bak
+*.tmp
+# Virtual environment
+# This is crucial. Adjust if your venv is named differently or at a different path.
+# Common for pyenv virtualenv:
+.venv/
+env/
+venv/
+ENV/
+# If you use pyenv directly, also consider:
+.python-version
+# Example if using poetry or pipenv virtualenvs created outside the project root:
+# .venv
+# virtualenvs/
+
+# Packaging
+# --------
+.coverage
+.tox/
+.pytest_cache/
+nosetests.xml
+coverage.xml
+htmlcov/
+.nox/
+
+# Editors
+# ========================
+# PyCharm
+.idea/                          # PyCharm project files
+.vscode/                        # VS Code (if colleagues use it, or if you switch)
+*.iml                           # IntelliJ IDEA/PyCharm module file
+
+# Operating System Files
+# ========================
+.DS_Store                       # macOS
+.Trash-?* # macOS
+Thumbs.db                       # Windows
+ehthumbs.db                     # Windows
+Desktop.ini                     # Windows
+
+# Environment Variables & Secrets
+# ========================
+.env                            # Local environment variables (DO NOT COMMIT SECRETS)
+.env.*local                     # Other local .env files
+*.sqlite3                       # SQLite databases (if used for local dev DB)
+*.db                            # Generic database files
+secrets.yaml                    # Example for other secret files
+config/*.local.ini              # Example for local-specific config overrides
+*.key                           # Private keys
+*.pem                           # Certificate files
+*.crt                           # Certificate files
+
+# Logs and Data
+# ========================
+*.log
+logs/
+data/                           # If you store raw/processed data files in repo
+tmp/
+temp/
+media/                          # User-uploaded media (if any, will be served from cloud in prod)
+static/                         # Generated static files (if any)
+
+# Docker
+# ========================
+docker-compose.override.yml     # Local Docker overrides (often contains host paths/secrets)
+*.dockerignore                  # Can be useful if .dockerignore itself needs to be ignored
+!Dockerfile                     # Do not ignore Dockerfile
+!docker-compose.yml             # Do not ignore primary docker-compose.yml
+
+# Compiled assets
+# ========================
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# TimescaleDB / PostgreSQL (Local Dev Specific)
+# ========================
+pgdata/                         # Default data directory for local PostgreSQL instances
+*.dump                          # Database dumps

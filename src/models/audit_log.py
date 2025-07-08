@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, JSON, Integer, ForeignKey
+from sqlalchemy import Column, JSON, Integer, ForeignKey, Text
 from sqlalchemy.sql.sqltypes import DateTime
 from sqlalchemy.types import Enum
 from sqlalchemy.orm import relationship
@@ -21,14 +21,14 @@ class AuditLog(Base, TimestampMixin):
     # Two-way relationship to Tenant
     tenant = relationship("Tenant", backref="audit_logs")
 
-    user_id = Column(String, nullable=False, index=True)
+    user_id = Column(Text, nullable=False, index=True)
     session_data = Column(JSON, nullable=False)
     action = Column(Enum(LogAction), nullable=False)
-    resource_type = Column(String, nullable=False)
-    resource_id = Column(String, nullable=False)
-    ip_address = Column(String, nullable=False)
-    user_agent = Column(String, nullable=False)
-    message = Column(String, nullable=False)
+    resource_type = Column(Text, nullable=False)
+    resource_id = Column(Text, nullable=False)
+    ip_address = Column(Text, nullable=False)
+    user_agent = Column(Text, nullable=False)
+    message = Column(Text, nullable=False)
     log_metadata = Column(JSON, nullable=True)
     before_state = Column(JSON, nullable=True)
     after_state = Column(JSON, nullable=True)

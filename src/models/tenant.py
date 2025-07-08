@@ -1,5 +1,5 @@
 """Tenant model definition."""
-from sqlalchemy import Column, String, Integer
+from sqlalchemy import Column, Text, Integer
 
 from .base import Base, TimestampMixin
 
@@ -10,8 +10,8 @@ class Tenant(Base, TimestampMixin):
     __tablename__ = "tenants"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    name = Column(String, nullable=False)
-    description = Column(String, nullable=True)
+    name = Column(Text, nullable=False)
+    description = Column(Text, nullable=True)
 
     def __repr__(self):
         return f"Tenant(id={self.id}, name={self.name})"
