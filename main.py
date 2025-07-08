@@ -21,7 +21,7 @@ from fastapi.responses import JSONResponse
 from pydantic import ValidationError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.api.endpoints import logs, search, stream, tenants
+from src.api.v1.endpoints import logs, search, stream, tenants
 from src.core.config import get_settings
 from src.database.pool import db_manager, get_db
 from src.middleware.dev_auth import MockAPIGatewayASGIMiddleware
@@ -99,7 +99,7 @@ app.add_middleware(
 )
 
 # Create API router with /api prefix
-api_router = APIRouter(prefix="/api")
+api_router = APIRouter(prefix="/api/v1")
 
 # Include API routers
 api_router.include_router(logs.router, tags=["Logs"])
