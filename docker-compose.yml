@@ -6,7 +6,6 @@ services:
   app:
     build:
       context: .
-      target: app
     ports:
       - "8000:8000"
     environment:
@@ -29,36 +28,12 @@ services:
         condition: service_started
       localstack:
         condition: service_healthy
+      lambda-deploy:
+        condition: service_completed_successfully
     volumes:
       - .:/app
       - /app/__pycache__
       - /app/.pytest_cache
-    networks:
-      - audit-log-network
-
-  worker:
-    build:
-      context: .
-      target: worker
-    environment:
-      - DATABASE_URL=postgresql+asyncpg://postgres:postgres@db:5432/audit_log
-      - AWS_ACCESS_KEY_ID=test
-      - AWS_SECRET_ACCESS_KEY=test
-      - AWS_REGION=ap-northeast-1
-      - SQS_ENDPOINT_URL=http://localstack-main:4566
-      - SQS_QUEUE_URL=http://localstack-main:4566/000000000000/audit-log-queue
-      - OPENSEARCH_URL=http://opensearch_con:9200
-      - SQS_MAX_MESSAGES=10
-      - SQS_VISIBILITY_TIMEOUT=300
-      - SQS_WAIT_TIME_SECONDS=20
-      - SQS_MAX_RETRIES=3
-    depends_on:
-      db:
-        condition: service_healthy
-      opensearch:
-        condition: service_started
-      localstack:
-        condition: service_healthy
     networks:
       - audit-log-network
 
@@ -70,6 +45,10 @@ services:
       - AWS_ACCESS_KEY_ID=test
       - AWS_SECRET_ACCESS_KEY=test
       - AWS_REGION=ap-northeast-1
+      - SQS_ENDPOINT_URL=http://localstack-main:4566
+      - SQS_QUEUE_URL=http://localstack-main:4566/000000000000/audit-log-queue
+      - OPENSEARCH_URL=http://opensearch_con:9200
+      - INDEX_NAME=audit-logs
     volumes:
       - ./lambda/sqs_processor:/app
     depends_on:

@@ -3,13 +3,6 @@ from typing import Dict
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from pathlib import Path
-from dotenv import load_dotenv
-
-# Load environment variables from .env file in the project root
-env_path = Path(__file__).parent.parent.parent / ".env"
-load_dotenv(dotenv_path=env_path)
-
 
 class Settings(BaseSettings):
     ENVIRONMENT: str = "local"
@@ -24,27 +17,17 @@ class Settings(BaseSettings):
 
     # Optional configuration
     DEBUG: bool = True
-    LOG_LEVEL: str = "INFO"
+    LOG_LEVEL: str = "info"
 
     # AWS
     AWS_REGION: str = "ap-northeast-1"  # Default region for LocalStack
     AWS_ACCESS_KEY_ID: str = "test"
     AWS_SECRET_ACCESS_KEY: str = "test"
-
-    # SQS
-    SQS_ENDPOINT_URL: str = ""
-    QUEUE_NAME: str = "audit-log-queue"
-    SQS_MAX_RETRIES: int = 3
-    SQS_MAX_MESSAGES: int = 10
-    SQS_VISIBILITY_TIMEOUT: int = 300  # 5 minutes
-    SQS_WAIT_TIME_SECONDS: int = 20
-    DLQ_QUEUE_URL: str | None = None  # Optional DLQ URL
-
-    # LOCALSTACK
-    LOCALSTACK_ENDPOINT_URL: str = "http://localhost:4566"
+    SQS_ENDPOINT_URL: str = "http://localhost:4566"
+    SQS_QUEUE_NAME: str = "audit-log-queue"
 
     # OpenSearch
-    OPENSEARCH_URL: str = "http://opensearch:9200"
+    OPENSEARCH_URL: str = "http://localhost:9200"
 
     # Data Retention
     LOG_RETENTION_DAYS: int = 90
@@ -95,23 +78,10 @@ class Settings(BaseSettings):
     def sqs_config(self) -> dict:
         config = {
             "region_name": self.AWS_REGION,
+            "aws_access_key_id": self.AWS_ACCESS_KEY_ID,
+            "aws_secret_access_key": self.AWS_SECRET_ACCESS_KEY,
+            "endpoint_url": self.SQS_ENDPOINT_URL,
         }
-
-        if self.is_local:
-            # LocalStack configuration
-            config.update({
-                "endpoint_url": self.SQS_ENDPOINT_URL or self.LOCALSTACK_ENDPOINT_URL,
-                "aws_access_key_id": "test",
-                "aws_secret_access_key": "test",
-            })
-        else:
-            # Production AWS configuration
-            if self.AWS_ACCESS_KEY_ID and self.AWS_SECRET_ACCESS_KEY:
-                config.update({
-                    "aws_access_key_id": self.AWS_ACCESS_KEY_ID,
-                    "aws_secret_access_key": self.AWS_SECRET_ACCESS_KEY,
-                })
-            # If not provided, boto3 will use IAM roles/profiles
 
         return config
 

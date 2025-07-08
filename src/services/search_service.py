@@ -32,59 +32,6 @@ class SearchService:
             timeout=30
         )
 
-    def create_index(self) -> None:
-        """
-        Create the audit logs index in OpenSearch with appropriate mappings.
-        """
-        if not self.opensearch.indices.exists(index=self.INDEX_NAME):
-            mappings = {
-                "mappings": {
-                    "properties": {
-                        "id": {"type": "keyword"},
-                        "tenant_id": {"type": "keyword"},
-                        "message": {"type": "text"},
-                        "log_metadata": {"type": "text"},
-                        "created_at": {"type": "date"},
-                        "user_id": {"type": "keyword"},
-                        "action": {"type": "keyword"},
-                        "resource_type": {"type": "keyword"},
-                        "severity": {"type": "keyword"}
-                    }
-                }
-            }
-            self.opensearch.indices.create(index=self.INDEX_NAME, body=mappings)
-            logger.info(f"Created OpenSearch index: {self.INDEX_NAME}")
-        else:
-            logger.info(f"OpenSearch index: {self.INDEX_NAME} already exists")
-
-    async def index_log(self, log: Dict[str, Any]) -> None:
-        """
-        Index a single audit log entry in OpenSearch.
-
-        Args:
-            log (Dict[str, Any]): Audit log entry to index
-        """
-        try:
-            self.opensearch.index(
-                index=self.INDEX_NAME,
-                id=log["id"],
-                body={
-                    "id": log["id"],
-                    "tenant_id": log["tenant_id"],
-                    "message": log["message"],
-                    "log_metadata": json.dumps(log["log_metadata"]) if log["log_metadata"] else "",
-                    "created_at": log["created_at"],
-                    "user_id": log["user_id"],
-                    "action": log["action"],
-                    "resource_type": log["resource_type"],
-                    "severity": log["severity"]
-                }
-            )
-            logger.info(f"Indexed log entry: {log['id']}")
-        except Exception as e:
-            logger.error(f"Failed to index log entry: {log['id']}, Error: {str(e)}")
-            raise
-
     async def search_logs(
         self,
         tenant_id: int,

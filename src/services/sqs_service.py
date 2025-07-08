@@ -20,9 +20,8 @@ class SQSService:
 
     def __init__(self):
         self.client = boto3.client('sqs', **settings.sqs_config)
-        response = self.client.get_queue_url(QueueName=settings.QUEUE_NAME)
+        response = self.client.get_queue_url(QueueName=settings.SQS_QUEUE_NAME)
         self.queue_url = response['QueueUrl']
-        logger.info(f"Using existing queue: {self.queue_url}")
         self.search_service = SearchService()
 
     async def send_task(self, task_type: TaskType, payload: Dict[str, Any]) -> str:
